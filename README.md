@@ -1,11 +1,4 @@
-# 🤖 Qwen API
-
-<div align="center">
-
-![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green?logo=fastapi&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Ollama](https://img.shields.io/badge/Ollama-Latest-orange)
+#  Qwen API
 
 **API REST profesional para análisis de texto con Inteligencia Artificial**
 
@@ -15,7 +8,7 @@
 
 ---
 
-## 📋 Descripción del Proyecto
+##  Descripción del Proyecto
 
 **Qwen API** es una API REST construida con FastAPI que proporciona servicios de análisis de texto utilizando el modelo de lenguaje **Qwen 2.5** ejecutado localmente a través de **Ollama**. 
 
@@ -23,24 +16,24 @@
 
 | Tarea | Descripción |
 |-------|-------------|
-| 🔍 **Analizar** | Análisis detallado de cualquier texto |
-| 📝 **Resumir** | Resume textos largos de manera concisa |
-| 😊 **Sentimiento** | Detecta si el texto es positivo, negativo o neutral |
-| 💡 **Extraer** | Extrae las ideas principales y conceptos clave |
-| 🏷️ **Keywords** | Identifica las palabras clave más importantes |
+|  **Analizar** | Análisis detallado de cualquier texto |
+|  **Resumir** | Resume textos largos de manera concisa |
+|  **Sentimiento** | Detecta si el texto es positivo, negativo o neutral |
+|  **Extraer** | Extrae las ideas principales y conceptos clave |
+|  **Keywords** | Identifica las palabras clave más importantes |
 
 ### Características Principales
 
-- ✅ **100% Local** - No requiere conexión a APIs externas de IA
-- ✅ **Privacidad Total** - Tus datos nunca salen de tu servidor
-- ✅ **Dockerizado** - Despliegue fácil con Docker Compose
-- ✅ **Autenticación** - Protección con API Key
-- ✅ **Documentación Automática** - Swagger UI y ReDoc incluidos
-- ✅ **Procesamiento Batch** - Analiza múltiples textos en una sola petición
+-  **100% Local** - No requiere conexión a APIs externas de IA
+-  **Privacidad Total** - Tus datos nunca salen de tu servidor
+-  **Dockerizado** - Despliegue fácil con Docker Compose
+-  **Autenticación** - Protección con API Key
+-  **Documentación Automática** - Swagger UI y ReDoc incluidos
+-  **Procesamiento Batch** - Analiza múltiples textos en una sola petición
 
 ---
 
-## 🏗️ Arquitectura
+##  Arquitectura
 
 ```mermaid
 graph LR
@@ -57,30 +50,30 @@ graph LR
 
 ```
 qwen-api/
-├── 📄 docker-compose.yml    # Orquestación de contenedores
-├── 📄 .env                  # Variables de entorno (no subir a git)
-├── 📄 .env.example          # Plantilla de configuración
-├── 📄 requirements.txt      # Dependencias Python
+├──  docker-compose.yml    # Orquestación de contenedores
+├──  .env                  # Variables de entorno (no subir a git)
+├──  .env.example          # Plantilla de configuración
+├──  requirements.txt      # Dependencias Python
 │
-└── 📁 api/
-    ├── 📄 Dockerfile        # Imagen Docker de la API
+└──  api/
+    ├──  Dockerfile        # Imagen Docker de la API
     │
-    └── 📁 app/
-        ├── 📄 __init__.py       # Paquete principal
-        ├── 📄 main.py           # Punto de entrada FastAPI
-        ├── 📄 config.py         # Configuración con Pydantic
-        ├── 📄 models.py         # Modelos de request/response
-        ├── 📄 dependencies.py   # Autenticación API Key
+    └──  app/
+        ├──  __init__.py       # Paquete principal
+        ├──  main.py           # Punto de entrada FastAPI
+        ├──  config.py         # Configuración con Pydantic
+        ├──  models.py         # Modelos de request/response
+        ├──  dependencies.py   # Autenticación API Key
         │
-        └── 📁 routers/
-            ├── 📄 __init__.py   # Paquete de routers
-            ├── 📄 health.py     # Endpoint de salud
-            └── 📄 analisis.py   # Endpoints de análisis
+        └──  routers/
+            ├──  __init__.py   # Paquete de routers
+            ├──  health.py     # Endpoint de salud
+            └──  analisis.py   # Endpoints de análisis
 ```
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
+##  Tecnologías Utilizadas
 
 | Tecnología | Versión | Propósito |
 |------------|---------|-----------|
@@ -94,7 +87,7 @@ qwen-api/
 
 ---
 
-## 📦 Instalación
+##  Instalación
 
 ### Prerrequisitos
 
@@ -173,7 +166,7 @@ docker exec -it qwen-ollama ollama pull qwen2.5:3b
 
 ---
 
-## 🚀 Uso
+##  Uso
 
 ### Acceder a la Documentación
 
@@ -279,7 +272,7 @@ else:
 
 ---
 
-## 📡 Endpoints
+##  Endpoints
 
 ### Tabla de Endpoints
 
@@ -317,7 +310,7 @@ else:
 
 ---
 
-## ⚙️ Configuración
+##  Configuración
 
 ### Variables de Entorno
 
@@ -332,20 +325,8 @@ else:
 | `OLLAMA_NUM_THREADS` | ❌ No | 8 | Threads para Ollama |
 | `OLLAMA_MAX_LOADED_MODELS` | ❌ No | 1 | Modelos en memoria |
 
-### Modelos Disponibles
 
-Puedes cambiar el modelo en `.env`. Opciones recomendadas:
-
-| Modelo | RAM Necesaria | Velocidad | Calidad |
-|--------|---------------|-----------|---------|
-| `qwen2.5:0.5b` | 2 GB | ⚡⚡⚡ | ⭐⭐ |
-| `qwen2.5:1.5b` | 3 GB | ⚡⚡⚡ | ⭐⭐⭐ |
-| `qwen2.5:3b` | 4 GB | ⚡⚡ | ⭐⭐⭐⭐ |
-| `qwen2.5:7b` | 8 GB | ⚡ | ⭐⭐⭐⭐⭐ |
-
----
-
-## 🔧 Comandos Útiles
+##  Comandos Útiles
 
 ```bash
 # Ver logs en tiempo real
@@ -381,7 +362,7 @@ docker exec -it qwen-ollama ollama pull llama3:8b
 
 ---
 
-## 🔒 Seguridad
+##  Seguridad
 
 ### Recomendaciones para Producción
 
@@ -400,7 +381,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 ---
 
-## 🐛 Solución de Problemas
+##  Solución de Problemas
 
 ### Error: "Servicio no disponible"
 
@@ -431,16 +412,3 @@ docker exec -it qwen-ollama ollama list
 - Confirmar que el valor coincide con el de `.env`
 - Reiniciar la API después de cambiar `.env`
 
----
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Consulta el archivo `LICENSE` para más detalles.
-
----
-
-<div align="center">
-
-**Desarrollado con ❤️ usando FastAPI y Ollama**
-
-</div>
