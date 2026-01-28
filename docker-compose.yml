@@ -1,0 +1,67 @@
+
+
+services:
+  # Servidor Ollama (gestiona los modelos)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: qwen-ollama
+    volumes:
+      # Volumen para persistir modelos
+      # Volumen para persistir modelos (montado desde host)
+      - c:/Users/JoséGómez/.ollama:/root/.ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    environment:
+      - OLLAMA_NUM_THREADS=${OLLAMA_NUM_THREADS:-8}
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-1}
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 8G
+        reservations:
+          memory: 4G
+    networks:
+      - qwen-network
+
+  # API REST
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: qwen-api
+    env_file:
+      - .env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+    networks:
+      - qwen-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  ollama_models:
+    driver: local
+
+networks:
+  qwen-network:
+    driver: bridge
