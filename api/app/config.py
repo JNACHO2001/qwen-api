@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     ollama_host: str = "ollama"  # Nombre del servicio Docker
     ollama_port: int = 11434  # Puerto estándar de Ollama
-    model_name: str = "qwen2.5:3b-instruct-q4_K_M"  # Modelo Qwen cuantizado
+    model_name: str = "qwen2.5:1.5b"  # Modelo Qwen optimizado para velocidad
     
     # -------------------------------------------------------------------------
     # Configuración de la aplicación
