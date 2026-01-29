@@ -33,43 +33,59 @@ settings = get_settings()  # Configuración global de la aplicación
 # Define el prompt para clasificar procesos legales
 # El placeholder {texto} será reemplazado con el texto del proceso
 PROMPTS = {
-    "clasificar_dolmen": """Eres un asistente especializado en clasificar procesos legales del Consejo de Estado colombiano.
+    "clasificar_dolmen": """
+     TAREA:
+     Clasificar un proceso judicial colombiano como RELEVANTE o NO RELEVANTE
+     respecto a ALUMBRADO PÚBLICO o la empresa DOLMEN.
 
-Tu tarea es determinar si un proceso judicial está relacionado con la empresa DOLMEN o con servicios de alumbrado público.
+REGLA PRIORITARIA (OBLIGATORIA):
+Si el texto contiene literalmente AL MENOS UNA de las siguientes expresiones:
+- "alumbrado"
+- "alumbrado público"
+- "iluminación pública"
 
-CRITERIOS PARA CLASIFICAR COMO RELEVANTE:
-1. El proceso menciona explícitamente a DOLMEN (empresa de alumbrado público)
-2. Se trata de servicios de alumbrado público, iluminación pública o luminarias
-3. Se mencionan contratos, obligaciones o reclamaciones sobre alumbrado público
-4. Involucra postes de luz, servicios de iluminación urbana/residencial
-5. Reclamos por cobros o facturación de alumbrado público
+ENTONCES la clasificación DEBE ser:
+"es_relevante": true
+y la confianza DEBE ser >= 0.7
 
-CRITERIOS PARA CLASIFICAR COMO NO RELEVANTE:
-1. Procesos sobre otros servicios públicos (agua, gas, alcantarillado, energía eléctrica residencial)
-2. Demandas sobre otros temas administrativos sin relación con alumbrado
-3. Procesos laborales, penales o civiles sin mención de alumbrado público
-4. Casos donde "luz" o "iluminación" se mencionen en contextos diferentes (ej: "a la luz de los hechos")
+REGLAS DE RELEVANCIA:
+También es RELEVANTE si menciona:
+- "DOLMEN"
+- contratos de alumbrado público
+- servicio de alumbrado público
+- cobros, tarifas, facturación o prestación del alumbrado público
 
-NIVEL DE CONFIANZA:
-- 0.9-1.0: Mención explícita de DOLMEN o múltiples términos de alumbrado público
-- 0.7-0.89: Clara relación con alumbrado público sin mencionar DOLMEN
-- 0.5-0.69: Relación probable pero con ambigüedad
-- 0.3-0.49: Relación dudosa o muy indirecta
-- 0.0-0.29: No hay relación aparente
+REGLAS DE NO RELEVANCIA:
+Es NO RELEVANTE si el texto trata EXCLUSIVAMENTE de:
+- agua, gas, energía residencial, alcantarillado
+- otros contratos que NO sean de alumbrado público
+- demandas sin relación con alumbrado
+- uso figurativo de la palabra "luz" (ej: "a la luz de la ley")
 
 IMPORTANTE:
-- Analiza TODO el texto, no solo las primeras líneas
-- Presta especial atención a los antecedentes y pretensiones
-- Si hay duda razonable, es mejor clasificar como NO relevante (confianza < 0.6)
+- El tipo de proceso (tutela, ordinario, etc.) NO afecta la decisión
+- El demandado (municipio, empresa, persona) NO afecta la decisión
+- No inventar información
+- No interpretar fuera de las reglas
 
-Responde SOLO con JSON:
-{{
-  "es_relevante": true,
-  "confianza": 0.95,
-  "razon": "máximo 150 caracteres"
-}}
+CONFIDENCIA:
+- 0.9 → menciona "DOLMEN" + alumbrado público
+- 0.7 → mención clara de alumbrado o iluminación pública
+- 0.5 → relación probable pero ambigua
+- 0.3 → mención débil o indirecta
+- 0.0 → no relacionado
 
-{texto}"""
+RESTRICCIONES:
+- NO explicar
+- NO agregar texto fuera del JSON
+- RESPONDER SOLO JSON válido
+
+FORMATO DE RESPUESTA EXACTO:
+{{"es_relevante": true/false, "confianza": 0.0, "razon": "máx 100 caracteres"}}
+
+TEXTO A CLASIFICAR:
+{texto}
+"""
 }
 
 
@@ -111,10 +127,19 @@ async def clasificar_proceso(
 
         prompt = PROMPTS["clasificar_dolmen"].format(texto=texto_clasificar)
 
+      
+        
         response = client.chat(
             model=settings.model_name,
-            messages=[{'role': 'user', 'content': prompt}],
-            options={'temperature': 0.2, 'num_predict': 300}
+            messages=[{"role": "user", "content": prompt}],
+            options={
+                "temperature": 0.0,      # 🔒 Determinístico
+                "top_p": 0.1,            # 🔒 Reduce creatividad
+                "num_predict": 80,       # ⚡ Suficiente para JSON
+                "repeat_penalty": 1.1    # 🧹 Evita repeticiones
+        },
+                                            # 🧠 Corta justo al final del JSON
+          keep_alive="15m"
         )
 
         resultado = json.loads(response['message']['content'])
