@@ -79,7 +79,7 @@ qwen-api/
 | **Pydantic** | 2.5.0 | Validación de datos |
 | **Ollama** | 0.1.6 | Cliente para servidor de modelos |
 | **Docker** | Latest | Contenedorización |
-| **Qwen 2.5** | 3B | Modelo de lenguaje |
+| **Qwen 2.5** | 1.5B | Modelo de lenguaje optimizado |
 
 ---
 
@@ -121,7 +121,11 @@ API_KEY=tu_clave_secreta_aqui
 
 # Deja el resto con valores por defecto o ajusta según necesites
 API_PORT=8000
-MODEL_NAME=qwen2.5:3b
+MODEL_NAME=qwen2.5:1.5b
+
+# Optimizaciones de velocidad (recomendadas)
+OLLAMA_KEEP_ALIVE=15m
+OLLAMA_NUM_PARALLEL=4
 ```
 
 ### Paso 3: Iniciar los Servicios
@@ -378,9 +382,11 @@ else:
 | `API_HOST` | ❌ No | 0.0.0.0 | Host de la API |
 | `OLLAMA_HOST` | ❌ No | ollama | Host de Ollama |
 | `OLLAMA_PORT` | ❌ No | 11434 | Puerto de Ollama |
-| `MODEL_NAME` | ❌ No | qwen2.5:3b | Modelo a usar |
+| `MODEL_NAME` | ❌ No | qwen2.5:1.5b | Modelo a usar |
 | `OLLAMA_NUM_THREADS` | ❌ No | 8 | Threads para Ollama |
 | `OLLAMA_MAX_LOADED_MODELS` | ❌ No | 1 | Modelos en memoria |
+| `OLLAMA_KEEP_ALIVE` | ❌ No | 15m | Tiempo modelo en memoria |
+| `OLLAMA_NUM_PARALLEL` | ❌ No | 4 | Requests paralelos |
 
 
 ##  Comandos Útiles
