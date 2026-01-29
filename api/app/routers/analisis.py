@@ -1,15 +1,13 @@
 """
 =============================================================================
-ROUTER DE ANÁLISIS - analisis.py
+ROUTER DE CLASIFICACIÓN - analisis.py
 =============================================================================
-Contiene los endpoints principales para análisis de texto con IA.
+Endpoint para clasificar procesos legales del Consejo de Estado colombiano.
 
-Funcionalidades:
-- Análisis individual de textos
-- Procesamiento batch de múltiples textos
-- Diferentes tipos de tareas (resumir, sentimiento, extraer, etc.)
+Funcionalidad:
+- Clasificación de procesos relacionados con DOLMEN o alumbrado público
 
-Todos los endpoints requieren autenticación mediante API Key.
+Requiere autenticación mediante API Key.
 =============================================================================
 """
 
@@ -18,8 +16,9 @@ Todos los endpoints requieren autenticación mediante API Key.
 # -----------------------------------------------------------------------------
 from fastapi import APIRouter, Depends, HTTPException  # Herramientas de FastAPI
 import ollama  # Cliente para el servidor de modelos Ollama
+import json  # Para parsear respuestas JSON
 from app.config import get_settings  # Configuración de la aplicación
-from app.models import AnalisisRequest, AnalisisResponse  # Modelos de datos
+from app.models import ProcesoLegalRequest, ProcesoLegalResponse  # Modelos de datos
 from app.dependencies import verificar_api_key  # Dependencia de autenticación
 
 # -----------------------------------------------------------------------------
@@ -29,142 +28,123 @@ router = APIRouter()  # Router para agrupar endpoints de análisis
 settings = get_settings()  # Configuración global de la aplicación
 
 # -----------------------------------------------------------------------------
-# DICCIONARIO DE PROMPTS
+# PROMPT DEL CLASIFICADOR
 # -----------------------------------------------------------------------------
-# Define los prompts del sistema para cada tipo de tarea
-# El placeholder {texto} será reemplazado con el texto del usuario
+# Define el prompt para clasificar procesos legales
+# El placeholder {texto} será reemplazado con el texto del proceso
 PROMPTS = {
-    "analizar": "Analiza en detalle el siguiente texto:\n\n{texto}",
-    "resumir": "Resume de manera concisa el siguiente texto:\n\n{texto}",
-    "sentimiento": "Analiza el sentimiento (positivo, negativo, neutral) y explica:\n\n{texto}",
-    "extraer": "Extrae las ideas principales y conceptos clave:\n\n{texto}",
-    "keywords": "Extrae las palabras clave más importantes:\n\n{texto}"
+    "clasificar_dolmen": """Eres un asistente especializado en clasificar procesos legales del Consejo de Estado colombiano.
+
+Tu tarea es determinar si un proceso judicial está relacionado con la empresa DOLMEN o con servicios de alumbrado público.
+
+CRITERIOS PARA CLASIFICAR COMO RELEVANTE:
+1. El proceso menciona explícitamente a DOLMEN (empresa de alumbrado público)
+2. Se trata de servicios de alumbrado público, iluminación pública o luminarias
+3. Se mencionan contratos, obligaciones o reclamaciones sobre alumbrado público
+4. Involucra postes de luz, servicios de iluminación urbana/residencial
+5. Reclamos por cobros o facturación de alumbrado público
+
+CRITERIOS PARA CLASIFICAR COMO NO RELEVANTE:
+1. Procesos sobre otros servicios públicos (agua, gas, alcantarillado, energía eléctrica residencial)
+2. Demandas sobre otros temas administrativos sin relación con alumbrado
+3. Procesos laborales, penales o civiles sin mención de alumbrado público
+4. Casos donde "luz" o "iluminación" se mencionen en contextos diferentes (ej: "a la luz de los hechos")
+
+NIVEL DE CONFIANZA:
+- 0.9-1.0: Mención explícita de DOLMEN o múltiples términos de alumbrado público
+- 0.7-0.89: Clara relación con alumbrado público sin mencionar DOLMEN
+- 0.5-0.69: Relación probable pero con ambigüedad
+- 0.3-0.49: Relación dudosa o muy indirecta
+- 0.0-0.29: No hay relación aparente
+
+IMPORTANTE:
+- Analiza TODO el texto, no solo las primeras líneas
+- Presta especial atención a los antecedentes y pretensiones
+- Si hay duda razonable, es mejor clasificar como NO relevante (confianza < 0.6)
+
+Responde SOLO con JSON:
+{{
+  "es_relevante": true,
+  "confianza": 0.95,
+  "razon": "máximo 150 caracteres"
+}}
+
+{texto}"""
 }
 
 
 # -----------------------------------------------------------------------------
-# ENDPOINT DE ANÁLISIS INDIVIDUAL
+# ENDPOINT DE CLASIFICACIÓN DE PROCESOS LEGALES
 # -----------------------------------------------------------------------------
-@router.post("/analizar", response_model=AnalisisResponse, tags=["Análisis"])
-async def analizar_texto(
-    request: AnalisisRequest,  # Datos de entrada validados por Pydantic
-    api_key: str = Depends(verificar_api_key)  # Requiere autenticación
+@router.post("/clasificar", response_model=ProcesoLegalResponse, tags=["Clasificación"])
+async def clasificar_proceso(
+    request: ProcesoLegalRequest,
+    api_key: str = Depends(verificar_api_key)
 ):
     """
-    Analiza texto según la tarea especificada.
-    
-    Este endpoint envía el texto al modelo Qwen a través de Ollama
-    y retorna el resultado del análisis.
-    
-    **Tareas disponibles:**
-    - `analizar`: Análisis detallado del texto
-    - `resumir`: Resumen conciso
-    - `sentimiento`: Análisis de sentimiento
-    - `extraer`: Extracción de ideas principales
-    - `keywords`: Palabras clave
-    
+    Clasifica procesos legales relacionados con DOLMEN o alumbrado público.
+
+    Recibe un proceso judicial completo y devuelve el mismo objeto con
+    los campos de clasificación agregados (es_relevante, confianza, razon).
+
     Args:
-        request: Objeto con texto, tarea y parámetros del modelo
+        request: Objeto completo del proceso judicial
         api_key: API key validada (inyectada por Depends)
-        
+
     Returns:
-        AnalisisResponse: Resultado del análisis con metadatos
-        
+        ProcesoLegalResponse: Proceso completo con clasificación agregada
+
     Raises:
         HTTPException: Error 500 si falla el procesamiento
     """
     try:
-        # Creamos el cliente de Ollama con la URL del servidor
         client = ollama.Client(host=settings.ollama_base_url)
-        
-        # Construimos el prompt reemplazando {texto} con el texto del usuario
-        prompt = PROMPTS[request.tarea].format(texto=request.texto)
-        
-        # Enviamos la petición al modelo de IA
+
+        # Usar texto_pdf_completo o contenido_demanda para clasificar
+        texto_clasificar = request.texto_pdf_completo or request.contenido_demanda
+
+        if not texto_clasificar:
+            raise HTTPException(
+                status_code=400,
+                detail="Debe proporcionar texto_pdf_completo o contenido_demanda"
+            )
+
+        prompt = PROMPTS["clasificar_dolmen"].format(texto=texto_clasificar)
+
         response = client.chat(
-            model=settings.model_name,  # Modelo configurado (ej: qwen2.5:3b)
-            messages=[{'role': 'user', 'content': prompt}],  # Mensaje del usuario
-            options={
-                'temperature': request.temperatura,  # Creatividad (0.0 - 2.0)
-                'num_predict': request.max_tokens  # Límite de tokens de salida
-            }
+            model=settings.model_name,
+            messages=[{'role': 'user', 'content': prompt}],
+            options={'temperature': 0.2, 'num_predict': 300}
         )
-        
-        # Construimos y retornamos la respuesta estandarizada
-        return AnalisisResponse(
-            status="success",
-            tarea=request.tarea,
-            resultado=response['message']['content'],  # Texto generado por el modelo
-            modelo=settings.model_name,
-            tokens_usados=response.get('eval_count')  # Tokens consumidos (opcional)
+
+        resultado = json.loads(response['message']['content'])
+
+        # Devolver el objeto completo con clasificación
+        return ProcesoLegalResponse(
+            reg=request.reg,
+            radicacion=request.radicacion,
+            ponente=request.ponente,
+            demandante=request.demandante,
+            demandado=request.demandado,
+            clase=request.clase,
+            fecha_providencia=request.fecha_providencia,
+            actuacion=request.actuacion,
+            documento=request.documento,
+            fecha_estado=request.fecha_estado,
+            pdf_descargado=request.pdf_descargado,
+            ruta_pdf=request.ruta_pdf,
+            texto_pdf_completo=request.texto_pdf_completo,
+            contenido_demanda=request.contenido_demanda,
+            es_relevante=resultado["es_relevante"],
+            confianza=resultado["confianza"],
+            razon=resultado["razon"][:150],
+            keywords_encontrados=[],
+            metodo_clasificacion="IA"
         )
-        
-    except Exception as e:
-        # Capturamos cualquier error y lo reportamos como 500
+    except json.JSONDecodeError as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error al procesar el análisis: {str(e)}"
+            detail=f"Error al parsear respuesta JSON del modelo: {str(e)}"
         )
-
-
-# -----------------------------------------------------------------------------
-# ENDPOINT DE ANÁLISIS BATCH (MÚLTIPLES TEXTOS)
-# -----------------------------------------------------------------------------
-@router.post("/batch", tags=["Análisis"])
-async def batch_analizar(
-    textos: list[str],  # Lista de textos a procesar
-    tarea: str = "analizar",  # Tipo de análisis (mismo para todos)
-    api_key: str = Depends(verificar_api_key)  # Requiere autenticación
-):
-    """
-    Analiza múltiples textos en batch.
-    
-    Procesa una lista de textos secuencialmente, aplicando la misma
-    tarea de análisis a todos. Útil para procesar grandes volúmenes
-    de datos.
-    
-    **Nota de rendimiento**: Los textos se procesan uno por uno.
-    Para mejor rendimiento en producción, considerar implementar
-    procesamiento paralelo con asyncio o un sistema de colas.
-    
-    Args:
-        textos: Lista de textos a analizar
-        tarea: Tipo de tarea (aplica a todos los textos)
-        api_key: API key validada
-        
-    Returns:
-        dict: Resumen con total, exitosos, fallidos y resultados detallados
-    """
-    resultados = []  # Lista para almacenar resultados de cada texto
-    
-    # Iteramos sobre cada texto con su índice
-    for idx, texto in enumerate(textos):
-        try:
-            # Creamos un request individual para cada texto
-            req = AnalisisRequest(texto=texto, tarea=tarea)
-            
-            # Reutilizamos el endpoint de análisis individual
-            resultado = await analizar_texto(req, api_key)
-            
-            # Agregamos el resultado exitoso
-            resultados.append({
-                "index": idx,  # Posición original del texto
-                "status": "success",
-                "resultado": resultado.resultado
-            })
-            
-        except Exception as e:
-            # Si falla un texto, lo marcamos como error pero continuamos
-            resultados.append({
-                "index": idx,
-                "status": "error",
-                "error": str(e)  # Mensaje del error
-            })
-    
-    # Retornamos un resumen con estadísticas y todos los resultados
-    return {
-        "total": len(textos),  # Cantidad total de textos recibidos
-        "exitosos": sum(1 for r in resultados if r["status"] == "success"),
-        "fallidos": sum(1 for r in resultados if r["status"] == "error"),
-        "resultados": resultados  # Detalle de cada análisis
-    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

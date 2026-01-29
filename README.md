@@ -10,17 +10,13 @@
 
 ##  Descripción del Proyecto
 
-**Qwen API** es una API REST construida con FastAPI que proporciona servicios de análisis de texto utilizando el modelo de lenguaje **Qwen 2.5** ejecutado localmente a través de **Ollama**. 
+**Qwen API - Clasificador de Procesos Legales** es una API REST construida con FastAPI que clasifica procesos judiciales del Consejo de Estado colombiano relacionados con DOLMEN o alumbrado público, utilizando el modelo de lenguaje **Qwen 2.5** ejecutado localmente a través de **Ollama**. 
 
 ### ¿Qué puede hacer?
 
 | Tarea | Descripción |
 |-------|-------------|
-|  **Analizar** | Análisis detallado de cualquier texto |
-|  **Resumir** | Resume textos largos de manera concisa |
-|  **Sentimiento** | Detecta si el texto es positivo, negativo o neutral |
-|  **Extraer** | Extrae las ideas principales y conceptos clave |
-|  **Keywords** | Identifica las palabras clave más importantes |
+| ⚖️ **Clasificar Procesos Legales** | Clasifica procesos judiciales del Consejo de Estado colombiano relacionados con DOLMEN o alumbrado público |
 
 ### Características Principales
 
@@ -29,7 +25,7 @@
 -  **Dockerizado** - Despliegue fácil con Docker Compose
 -  **Autenticación** - Protección con API Key
 -  **Documentación Automática** - Swagger UI y ReDoc incluidos
--  **Procesamiento Batch** - Analiza múltiples textos en una sola petición
+-  **Clasificación Inteligente** - Análisis preciso con niveles de confianza
 
 ---
 
@@ -178,98 +174,6 @@ Una vez iniciada la API, accede a la documentación interactiva:
 | http://localhost:8000/redoc | ReDoc (documentación) |
 | http://localhost:8000/ | Información básica |
 
-### Ejemplos de Uso con cURL
-
-#### 1. Análisis de Texto
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/analizar" \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: tu_api_key" \
-  -d '{
-    "texto": "La inteligencia artificial está revolucionando todos los sectores de la economía.",
-    "tarea": "analizar",
-    "temperatura": 0.7,
-    "max_tokens": 512
-  }'
-```
-
-#### 2. Análisis de Sentimiento
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/analizar" \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: tu_api_key" \
-  -d '{
-    "texto": "¡Me encanta este producto! Es increíble y funciona perfectamente.",
-    "tarea": "sentimiento"
-  }'
-```
-
-#### 3. Extracción de Keywords
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/analizar" \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: tu_api_key" \
-  -d '{
-    "texto": "Python es un lenguaje de programación interpretado de alto nivel con tipado dinámico.",
-    "tarea": "keywords"
-  }'
-```
-
-#### 4. Procesamiento Batch
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/batch" \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: tu_api_key" \
-  -d '{
-    "textos": [
-      "Primer texto a analizar",
-      "Segundo texto a analizar",
-      "Tercer texto a analizar"
-    ],
-    "tarea": "resumir"
-  }'
-```
-
-### Ejemplos con Python
-
-```python
-import requests
-
-# Configuración
-API_URL = "http://localhost:8000/api/v1/analizar"
-API_KEY = "tu_api_key"
-
-# Headers de autenticación
-headers = {
-    "Content-Type": "application/json",
-    "X-API-Key": API_KEY
-}
-
-# Datos de la petición
-data = {
-    "texto": "Tu texto a analizar aquí",
-    "tarea": "sentimiento",
-    "temperatura": 0.7,
-    "max_tokens": 512
-}
-
-# Realizar petición
-response = requests.post(API_URL, json=data, headers=headers)
-
-# Procesar respuesta
-if response.status_code == 200:
-    resultado = response.json()
-    print(f"Estado: {resultado['status']}")
-    print(f"Resultado: {resultado['resultado']}")
-else:
-    print(f"Error: {response.status_code}")
-    print(response.text)
-```
-
 ---
 
 ##  Endpoints
@@ -282,31 +186,184 @@ else:
 | `GET` | `/health` | ❌ No | Estado del servicio |
 | `GET` | `/docs` | ❌ No | Documentación Swagger |
 | `GET` | `/redoc` | ❌ No | Documentación ReDoc |
-| `POST` | `/api/v1/analizar` | ✅ Sí | Análisis de texto |
-| `POST` | `/api/v1/batch` | ✅ Sí | Análisis de múltiples textos |
+| `POST` | `/api/v1/clasificar` | ✅ Sí | Clasificación de procesos legales |
 
-### Detalle de `/api/v1/analizar`
+### Detalle de `/api/v1/clasificar`
 
-**Request:**
+⚖️ **Endpoint especializado para clasificar procesos legales del Consejo de Estado colombiano**
+
+Este endpoint determina si un proceso judicial está relacionado con la empresa **DOLMEN** o con servicios de **alumbrado público**. Utiliza criterios específicos para evaluar la relevancia y proporciona un nivel de confianza de la clasificación.
+
+#### Criterios de Clasificación
+
+**RELEVANTE cuando:**
+- Menciona explícitamente a DOLMEN (empresa de alumbrado público)
+- Se trata de servicios de alumbrado público, iluminación pública o luminarias
+- Involucra contratos, obligaciones o reclamaciones sobre alumbrado público
+- Menciona postes de luz o servicios de iluminación urbana/residencial
+- Reclamos por cobros o facturación de alumbrado público
+
+**NO RELEVANTE cuando:**
+- Procesos sobre otros servicios públicos (agua, gas, alcantarillado, energía residencial)
+- Demandas administrativas sin relación con alumbrado
+- Procesos laborales, penales o civiles sin mención de alumbrado público
+- Menciones figurativas como "a la luz de los hechos"
+
+#### Niveles de Confianza
+
+| Rango | Significado |
+|-------|-------------|
+| 0.9 - 1.0 | Mención explícita de DOLMEN o múltiples términos de alumbrado público |
+| 0.7 - 0.89 | Clara relación con alumbrado público sin mencionar DOLMEN |
+| 0.5 - 0.69 | Relación probable pero con ambigüedad |
+| 0.3 - 0.49 | Relación dudosa o muy indirecta |
+| 0.0 - 0.29 | No hay relación aparente |
+
+#### Request
+
 ```json
 {
-  "texto": "string (1-10000 caracteres)",
-  "tarea": "analizar | resumir | sentimiento | extraer | keywords",
-  "temperatura": 0.7,
-  "max_tokens": 512
+  "texto": "string (mínimo 10 caracteres)",
+  "metadatos": {
+    "demandante": "string (opcional)",
+    "demandado": "string (opcional)"
+  }
 }
 ```
 
-**Response:**
+**Parámetros:**
+- `texto` *(requerido)*: Texto completo del proceso judicial a clasificar
+- `metadatos` *(opcional)*: Información adicional del proceso (demandante, demandado, etc.)
+
+#### Response
+
 ```json
 {
-  "status": "success",
-  "tarea": "sentimiento",
-  "resultado": "El texto tiene un sentimiento positivo...",
-  "modelo": "qwen2.5:3b",
-  "tokens_usados": 245
+  "es_relevante": true,
+  "confianza": 0.98,
+  "razon": "Menciona explícitamente a DOLMEN y reclamos por alumbrado público"
 }
 ```
+
+**Campos de respuesta:**
+- `es_relevante` *(boolean)*: `true` si está relacionado con DOLMEN/alumbrado público, `false` en caso contrario
+- `confianza` *(float)*: Nivel de confianza de la clasificación (0.0 a 1.0)
+- `razon` *(string)*: Explicación breve de la clasificación (máximo 150 caracteres)
+
+#### Ejemplos de Uso
+
+**Ejemplo 1: Proceso RELEVANTE (Alta confianza)**
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/clasificar" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: tu_api_key" \
+  -d '{
+    "texto": "El demandante reclama por cobros excesivos del servicio de alumbrado público facturados por la empresa DOLMEN durante los años 2020-2023. Se solicita la devolución de los pagos indebidos por concepto de luminarias no instaladas en el sector.",
+    "metadatos": {
+      "demandante": "JUAN PEREZ",
+      "demandado": "MUNICIPIO DE BOGOTA"
+    }
+  }'
+```
+
+**Respuesta esperada:**
+```json
+{
+  "es_relevante": true,
+  "confianza": 0.98,
+  "razon": "Menciona explícitamente a DOLMEN y reclamos por cobros de alumbrado público"
+}
+```
+
+**Ejemplo 2: Proceso NO RELEVANTE**
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/clasificar" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: tu_api_key" \
+  -d '{
+    "texto": "El demandante solicita el reconocimiento de prestaciones sociales derivadas de su contrato laboral con la empresa municipal de acueducto. Se reclama el pago de cesantías e intereses.",
+    "metadatos": {
+      "demandante": "PEDRO GOMEZ",
+      "demandado": "EMPRESA DE ACUEDUCTO"
+    }
+  }'
+```
+
+**Respuesta esperada:**
+```json
+{
+  "es_relevante": false,
+  "confianza": 0.95,
+  "razon": "Proceso laboral sobre acueducto, sin relación con alumbrado público o DOLMEN"
+}
+```
+
+**Ejemplo 3: Caso AMBIGUO (Confianza Media-Baja)**
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/clasificar" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: tu_api_key" \
+  -d '{
+    "texto": "A la luz de los hechos probados en el expediente, se concluye que la administración actuó correctamente en el proceso de contratación del servicio de aseo urbano."
+  }'
+```
+
+**Respuesta esperada:**
+```json
+{
+  "es_relevante": false,
+  "confianza": 0.92,
+  "razon": "Menciona 'luz' en contexto figurativo, trata sobre servicio de aseo"
+}
+```
+
+#### Uso en Python
+
+```python
+import requests
+
+# Configuración
+API_URL = "http://localhost:8000/api/v1/clasificar"
+API_KEY = "tu_api_key"
+
+# Headers
+headers = {
+    "Content-Type": "application/json",
+    "X-API-Key": API_KEY
+}
+
+# Datos del proceso legal
+data = {
+    "texto": "El demandante reclama por cobros de alumbrado público por DOLMEN...",
+    "metadatos": {
+        "demandante": "JUAN PEREZ",
+        "demandado": "MUNICIPIO"
+    }
+}
+
+# Realizar clasificación
+response = requests.post(API_URL, json=data, headers=headers)
+
+if response.status_code == 200:
+    resultado = response.json()
+    print(f"Es relevante: {resultado['es_relevante']}")
+    print(f"Confianza: {resultado['confianza']}")
+    print(f"Razón: {resultado['razon']}")
+else:
+    print(f"Error: {response.status_code}")
+    print(response.text)
+```
+
+#### Casos de Uso
+
+- **Filtrado automático** de procesos judiciales relacionados con DOLMEN
+- **Clasificación masiva** de expedientes del Consejo de Estado
+- **Priorización** de casos por relevancia y confianza
+- **Auditoría** de facturación de alumbrado público
+- **Monitoreo** de procesos administrativos relacionados
 
 ---
 
