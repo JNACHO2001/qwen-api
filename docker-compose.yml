@@ -8,12 +8,14 @@ services:
     volumes:
       # Volumen para persistir modelos
       # Volumen para persistir modelos (montado desde host)
-      - c:/Users/JoséGómez/.ollama:/root/.ollama
+      - c:/Users/Sistemas/.ollama:/root/.ollama
     ports:
       - "${OLLAMA_PORT:-11434}:11434"
     environment:
       - OLLAMA_NUM_THREADS=${OLLAMA_NUM_THREADS:-8}
       - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-1}
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-15m}
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 30s
