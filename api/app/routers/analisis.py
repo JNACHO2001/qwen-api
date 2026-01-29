@@ -133,13 +133,13 @@ async def clasificar_proceso(
             model=settings.model_name,
             messages=[{"role": "user", "content": prompt}],
             options={
-                "temperature": 0.0,      # 🔒 Determinístico
-                "top_p": 0.1,            # 🔒 Reduce creatividad
-                "num_predict": 80,       # ⚡ Suficiente para JSON
-                "repeat_penalty": 1.1    # 🧹 Evita repeticiones
+                "temperature": 0.0,      #  Determinístico
+                "top_p": 0.1,            #  Reduce creatividad
+                "num_predict": 80,       #  Suficiente para JSON
+                "repeat_penalty": 1.1    #  Evita repeticiones
         },
-                                            # 🧠 Corta justo al final del JSON
-          keep_alive="15m"
+                                           
+             keep_alive="15m"
         )
 
         resultado = json.loads(response['message']['content'])
