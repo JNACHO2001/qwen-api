@@ -15,7 +15,7 @@ Requiere autenticación mediante API Key.
 # IMPORTACIONES
 # -----------------------------------------------------------------------------
 from fastapi import APIRouter, Depends, HTTPException  # Herramientas de FastAPI
-from ollama import AsyncClient  # Cliente ASÍNCRONO para paralelismo real
+import ollama  # Cliente para el servidor de modelos Ollama
 import json  # Para parsear respuestas JSON
 from app.config import get_settings  # Configuración de la aplicación
 from app.models import ProcesoLegalRequest, ProcesoLegalResponse  # Modelos de datos
@@ -81,7 +81,7 @@ RESTRICCIONES:
 - RESPONDER SOLO JSON válido
 
 FORMATO DE RESPUESTA EXACTO:
-{{"es_relevante": true/false, "confianza": 0.0, "razon": "máx 100 caracteres"}}
+{{"es_relevante": true/false, "confianza": 0.0, "razon": "explicacion por que se tomo la decision"}}
 
 TEXTO A CLASIFICAR:
 {texto}
@@ -114,8 +114,7 @@ async def clasificar_proceso(
         HTTPException: Error 500 si falla el procesamiento
     """
     try:
-        # Cliente ASÍNCRONO para permitir múltiples requests en paralelo
-        client = AsyncClient(host=settings.ollama_base_url)
+        client = ollama.Client(host=settings.ollama_base_url)
 
         # Usar texto_pdf_completo o contenido_demanda para clasificar
         texto_clasificar = request.texto_pdf_completo or request.contenido_demanda
@@ -128,19 +127,19 @@ async def clasificar_proceso(
 
         prompt = PROMPTS["clasificar_dolmen"].format(texto=texto_clasificar)
 
-        # Llamada optimizada para máxima velocidad
-        response = await client.chat(
+      
+        
+        response = client.chat(
             model=settings.model_name,
             messages=[{"role": "user", "content": prompt}],
             options={
-                "temperature": 0.0,      # Determinístico
-                "top_p": 0.1,            # Reduce creatividad
-                "num_predict": 60,       # Mínimo necesario para JSON
-                "repeat_penalty": 1.0,   # Sin penalización (más rápido)
-                "num_ctx": 2048,         # Contexto reducido (más rápido)
-                "num_batch": 512,        # Batch grande (más rápido)
-            },
-            keep_alive="60m"  # Mantiene modelo en RAM más tiempo
+                "temperature": 0.0,      #  Determinístico
+                "top_p": 0.1,            #  Reduce creatividad
+                "num_predict": 80,       #  Suficiente para JSON
+                "repeat_penalty": 1.1    #  Evita repeticiones
+        },
+                                           
+             keep_alive="15m"
         )
 
         resultado = json.loads(response['message']['content'])
