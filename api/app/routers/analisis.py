@@ -80,8 +80,16 @@ RESTRICCIONES:
 - NO agregar texto fuera del JSON
 - RESPONDER SOLO JSON válido
 
-FORMATO DE RESPUESTA EXACTO:
-{{"es_relevante": true/false, "confianza": 0.0, "razon": "explicacion por que se tomo la decision"}}
+FORMATO DE RESPUESTA OBLIGATORIO (INCLUYE LOS 3 CAMPOS):
+{{"es_relevante": true/false, "confianza": 0.9, "razon": "breve explicacion de maximo 50 palabras"}}
+
+IMPORTANTE: Debes incluir OBLIGATORIAMENTE estos 3 campos en tu respuesta:
+1. es_relevante (boolean)
+2. confianza (number)
+3. razon (string con explicación breve)
+
+Ejemplo de respuesta válida:
+{{"es_relevante": true, "confianza": 0.9, "razon": "El texto menciona explícitamente alumbrado público y contrato con DOLMEN"}}
 
 TEXTO A CLASIFICAR:
 {texto}
@@ -127,22 +135,34 @@ async def clasificar_proceso(
 
         prompt = PROMPTS["clasificar_dolmen"].format(texto=texto_clasificar)
 
-      
-        
         response = client.chat(
             model=settings.model_name,
             messages=[{"role": "user", "content": prompt}],
             options={
-                "temperature": 0.0,      #  Determinístico
-                "top_p": 0.1,            #  Reduce creatividad
-                "num_predict": 80,       #  Suficiente para JSON
+                "temperature": 0.1,      #  Casi determinístico
+                "top_p": 0.3,            #  Un poco más de creatividad para generar la razón
+                "num_predict": 200,      #  Espacio suficiente para los 3 campos
                 "repeat_penalty": 1.1    #  Evita repeticiones
         },
-                                           
+
              keep_alive="15m"
         )
 
         resultado = json.loads(response['message']['content'])
+
+        # Validar que el resultado contenga los campos requeridos
+        if "es_relevante" not in resultado:
+            raise HTTPException(
+                status_code=500,
+                detail=f"El modelo no devolvió el campo 'es_relevante'. Respuesta: {resultado}"
+            )
+
+        # Usar .get() con valores por defecto para campos opcionales
+        es_relevante = resultado.get("es_relevante", False)
+        confianza = resultado.get("confianza", 0.0)
+        # Intentar con y sin tilde
+        razon = resultado.get("razon") or resultado.get("razón", "Sin razón proporcionada por el modelo")
+        razon = str(razon)[:150]  # Limitar a 150 caracteres
 
         # Devolver el objeto completo con clasificación
         return ProcesoLegalResponse(
@@ -160,9 +180,9 @@ async def clasificar_proceso(
             ruta_pdf=request.ruta_pdf,
             texto_pdf_completo=request.texto_pdf_completo,
             contenido_demanda=request.contenido_demanda,
-            es_relevante=resultado["es_relevante"],
-            confianza=resultado["confianza"],
-            razon=resultado["razon"][:150],
+            es_relevante=es_relevante,
+            confianza=confianza,
+            razon=razon,
             keywords_encontrados=[],
             metodo_clasificacion="IA"
         )
