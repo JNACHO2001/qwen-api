@@ -15,7 +15,7 @@ Requiere autenticación mediante API Key.
 # IMPORTACIONES
 # -----------------------------------------------------------------------------
 from fastapi import APIRouter, Depends, HTTPException  # Herramientas de FastAPI
-import ollama  # Cliente para el servidor de modelos Ollama
+from ollama import AsyncClient  # Cliente ASÍNCRONO para paralelismo real
 import json  # Para parsear respuestas JSON
 from app.config import get_settings  # Configuración de la aplicación
 from app.models import ProcesoLegalRequest, ProcesoLegalResponse  # Modelos de datos
@@ -114,7 +114,8 @@ async def clasificar_proceso(
         HTTPException: Error 500 si falla el procesamiento
     """
     try:
-        client = ollama.Client(host=settings.ollama_base_url)
+        # Cliente ASÍNCRONO para permitir múltiples requests en paralelo
+        client = AsyncClient(host=settings.ollama_base_url)
 
         # Usar texto_pdf_completo o contenido_demanda para clasificar
         texto_clasificar = request.texto_pdf_completo or request.contenido_demanda
@@ -127,19 +128,17 @@ async def clasificar_proceso(
 
         prompt = PROMPTS["clasificar_dolmen"].format(texto=texto_clasificar)
 
-      
-        
-        response = client.chat(
+        # Llamada ASÍNCRONA - permite que otras peticiones se procesen mientras espera
+        response = await client.chat(
             model=settings.model_name,
             messages=[{"role": "user", "content": prompt}],
             options={
-                "temperature": 0.0,      #  Determinístico
-                "top_p": 0.1,            #  Reduce creatividad
-                "num_predict": 80,       #  Suficiente para JSON
-                "repeat_penalty": 1.1    #  Evita repeticiones
-        },
-                                           
-             keep_alive="15m"
+                "temperature": 0.0,      # Determinístico
+                "top_p": 0.1,            # Reduce creatividad
+                "num_predict": 80,       # Suficiente para JSON
+                "repeat_penalty": 1.1    # Evita repeticiones
+            },
+            keep_alive="30m"  # Mantiene modelo en RAM
         )
 
         resultado = json.loads(response['message']['content'])
