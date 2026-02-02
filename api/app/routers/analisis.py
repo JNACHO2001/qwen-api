@@ -128,17 +128,19 @@ async def clasificar_proceso(
 
         prompt = PROMPTS["clasificar_dolmen"].format(texto=texto_clasificar)
 
-        # Llamada ASÍNCRONA - permite que otras peticiones se procesen mientras espera
+        # Llamada optimizada para máxima velocidad
         response = await client.chat(
             model=settings.model_name,
             messages=[{"role": "user", "content": prompt}],
             options={
                 "temperature": 0.0,      # Determinístico
                 "top_p": 0.1,            # Reduce creatividad
-                "num_predict": 80,       # Suficiente para JSON
-                "repeat_penalty": 1.1    # Evita repeticiones
+                "num_predict": 60,       # Mínimo necesario para JSON
+                "repeat_penalty": 1.0,   # Sin penalización (más rápido)
+                "num_ctx": 2048,         # Contexto reducido (más rápido)
+                "num_batch": 512,        # Batch grande (más rápido)
             },
-            keep_alive="30m"  # Mantiene modelo en RAM
+            keep_alive="60m"  # Mantiene modelo en RAM más tiempo
         )
 
         resultado = json.loads(response['message']['content'])
