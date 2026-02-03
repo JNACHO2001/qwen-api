@@ -18,10 +18,25 @@ Versión: 1.0.0
 # -----------------------------------------------------------------------------
 # IMPORTACIONES
 # -----------------------------------------------------------------------------
+import logging  # Módulo estándar de Python para logging
 from fastapi import FastAPI  # Framework principal para crear la API
 from fastapi.middleware.cors import CORSMiddleware  # Middleware para CORS
 from app.config import get_settings  # Función para obtener configuración
 from app.routers import health, analisis  # Routers de la aplicación
+
+# -----------------------------------------------------------------------------
+# CONFIGURACIÓN DE LOGGING
+# -----------------------------------------------------------------------------
+# Configuramos el logging para toda la aplicación
+# Formato: [FECHA HORA] - NIVEL - NOMBRE_MODULO - MENSAJE
+logging.basicConfig(
+    level=logging.INFO,  # Nivel mínimo de mensajes a mostrar
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
+# Creamos un logger específico para este módulo
+logger = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 # CONFIGURACIÓN GLOBAL
@@ -40,6 +55,11 @@ app = FastAPI(
     docs_url="/docs",  # URL de la documentación Swagger UI
     redoc_url="/redoc"  # URL de la documentación alternativa ReDoc
 )
+
+# Log de inicio de la aplicación
+logger.info(f"Iniciando {settings.app_name} v{settings.app_version}")
+logger.info(f"Modelo configurado: {settings.model_name}")
+logger.info(f"Ollama URL: {settings.ollama_base_url}")
 
 # -----------------------------------------------------------------------------
 # CONFIGURACIÓN DE CORS (Cross-Origin Resource Sharing)

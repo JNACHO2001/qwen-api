@@ -14,10 +14,14 @@ Los health checks son esenciales para:
 # -----------------------------------------------------------------------------
 # IMPORTACIONES
 # -----------------------------------------------------------------------------
+import logging  # Para logging estructurado
 from fastapi import APIRouter, HTTPException  # Router y excepciones HTTP
 import ollama  # Cliente para comunicarse con el servidor Ollama
 from app.config import get_settings  # Configuración de la aplicación
 from app.models import HealthResponse  # Modelo de respuesta
+
+# Logger para este módulo
+logger = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 # CONFIGURACIÓN DEL ROUTER
@@ -73,6 +77,7 @@ async def health_check():
         
     except Exception as e:
         # Si hay cualquier error (conexión, timeout, etc.), retornamos 503
+        logger.error(f"Health check falló: {str(e)}")
         raise HTTPException(
             status_code=503,  # Service Unavailable
             detail=f"Servicio no disponible: {str(e)}"

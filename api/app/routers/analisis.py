@@ -14,12 +14,16 @@ Requiere autenticación mediante API Key.
 # -----------------------------------------------------------------------------
 # IMPORTACIONES
 # -----------------------------------------------------------------------------
+import logging  # Para logging estructurado
 from fastapi import APIRouter, Depends, HTTPException  # Herramientas de FastAPI
 import ollama  # Cliente para el servidor de modelos Ollama
 import json  # Para parsear respuestas JSON
 from app.config import get_settings  # Configuración de la aplicación
 from app.models import ProcesoLegalRequest, ProcesoLegalResponse  # Modelos de datos
 from app.dependencies import verificar_api_key  # Dependencia de autenticación
+
+# Logger para este módulo
+logger = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 # CONFIGURACIÓN DEL ROUTER
@@ -122,18 +126,23 @@ async def clasificar_proceso(
         HTTPException: Error 500 si falla el procesamiento
     """
     try:
+        logger.info(f"Nueva solicitud de clasificación - Radicación: {request.radicacion or 'N/A'}")
+
         client = ollama.Client(host=settings.ollama_base_url)
 
         # Usar texto_pdf_completo o contenido_demanda para clasificar
         texto_clasificar = request.texto_pdf_completo or request.contenido_demanda
 
         if not texto_clasificar:
+            logger.warning("Solicitud rechazada: no se proporcionó texto para clasificar")
             raise HTTPException(
                 status_code=400,
                 detail="Debe proporcionar texto_pdf_completo o contenido_demanda"
             )
 
         prompt = PROMPTS["clasificar_dolmen"].format(texto=texto_clasificar)
+
+        logger.debug(f"Enviando texto al modelo ({len(texto_clasificar)} caracteres)")
 
         response = client.chat(
             model=settings.model_name,
@@ -164,6 +173,8 @@ async def clasificar_proceso(
         razon = resultado.get("razon") or resultado.get("razón", "Sin razón proporcionada por el modelo")
         razon = str(razon)[:150]  # Limitar a 150 caracteres
 
+        logger.info(f"Clasificación exitosa - Relevante: {es_relevante}, Confianza: {confianza}")
+
         # Devolver el objeto completo con clasificación
         return ProcesoLegalResponse(
             reg=request.reg,
@@ -187,9 +198,11 @@ async def clasificar_proceso(
             metodo_clasificacion="IA"
         )
     except json.JSONDecodeError as e:
+        logger.error(f"Error parseando JSON del modelo: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Error al parsear respuesta JSON del modelo: {str(e)}"
         )
     except Exception as e:
+        logger.error(f"Error en clasificación: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
