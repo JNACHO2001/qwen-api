@@ -333,10 +333,18 @@ docker exec qwen-api curl http://ollama:11434/api/tags
 ```
 qwen-api/
 ├── docker-compose.yml
-├── .env
-├── .env.example
+├── .env                    # Variables de entorno (no subir a git)
+├── .env.example            # Ejemplo de configuración
+├── .gitignore              # Archivos ignorados por git
+├── requirements.txt        # Dependencias Python
+├── tests/                  # Tests automatizados
+│   ├── conftest.py         # Configuración de pytest
+│   ├── test_config.py      # Tests de configuración
+│   ├── test_models.py      # Tests de modelos Pydantic
+│   └── test_api.py         # Tests de endpoints
 └── api/
     ├── Dockerfile
+    ├── requirements.txt
     └── app/
         ├── main.py
         ├── config.py
@@ -346,6 +354,87 @@ qwen-api/
             ├── health.py
             └── analisis.py
 ```
+
+---
+
+## Tests
+
+El proyecto incluye tests automatizados para verificar el correcto funcionamiento de la API.
+
+### Estructura de Tests
+
+| Archivo | Descripción | Tests |
+|---------|-------------|-------|
+| `test_config.py` | Verifica la configuración de la aplicación | 4 |
+| `test_models.py` | Verifica los modelos Pydantic | 5 |
+| `test_api.py` | Verifica los endpoints de la API | 6 |
+
+### Ejecutar Tests (dentro de Docker)
+
+La forma más fácil de ejecutar los tests es dentro del contenedor donde ya están todas las dependencias:
+
+```bash
+# Copiar los tests al contenedor (solo la primera vez)
+docker cp tests qwen-api:/app/tests
+
+# Ejecutar todos los tests
+docker exec qwen-api python -m pytest tests/ -v
+```
+
+### Comandos de Pytest
+
+```bash
+# Ejecutar todos los tests con detalle
+docker exec qwen-api python -m pytest tests/ -v
+
+# Ejecutar solo tests de modelos
+docker exec qwen-api python -m pytest tests/test_models.py -v
+
+# Ejecutar solo tests de API
+docker exec qwen-api python -m pytest tests/test_api.py -v
+
+# Ejecutar solo tests de configuración
+docker exec qwen-api python -m pytest tests/test_config.py -v
+
+# Ejecutar tests sin traceback largo
+docker exec qwen-api python -m pytest tests/ -v --tb=short
+```
+
+### Ejecutar Tests Manualmente
+
+También puedes entrar al contenedor y ejecutar los tests:
+
+```bash
+# Entrar al contenedor
+docker exec -it qwen-api bash
+
+# Dentro del contenedor
+python -m pytest tests/ -v
+```
+
+### Resultado Esperado
+
+```
+tests/test_api.py::test_endpoint_raiz PASSED
+tests/test_api.py::test_endpoint_docs PASSED
+tests/test_api.py::test_clasificar_sin_api_key PASSED
+tests/test_api.py::test_clasificar_api_key_incorrecta PASSED
+tests/test_api.py::test_clasificar_sin_texto PASSED
+tests/test_api.py::test_estructura_respuesta_raiz PASSED
+tests/test_config.py::test_api_key_existe PASSED
+tests/test_config.py::test_valores_por_defecto PASSED
+tests/test_config.py::test_ollama_base_url PASSED
+tests/test_config.py::test_singleton_settings PASSED
+tests/test_models.py::test_health_response_valido PASSED
+tests/test_models.py::test_proceso_legal_request_minimo PASSED
+tests/test_models.py::test_proceso_legal_request_completo PASSED
+tests/test_models.py::test_proceso_legal_response PASSED
+tests/test_models.py::test_pydantic_validacion_tipos PASSED
+
+======================== 15 passed ========================
+```
+
+---
 
 ## Solución de Problemas Comunes
 
@@ -393,9 +482,11 @@ volumes:
 
 - Python 3.11
 - FastAPI
+- Pydantic
 - Ollama
 - Qwen 2.5 (1.5B)
 - Docker
+- Pytest (testing)
 
 ---
 
