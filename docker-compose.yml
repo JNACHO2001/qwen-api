@@ -8,7 +8,7 @@ services:
     volumes:
       # Volumen para persistir modelos
       # Volumen para persistir modelos (montado desde host)
-      - C:\Users\JoséGómez\.ollama:/root/.ollama
+      - C:\Users\Sistemas\.ollama:/root/.ollama
     ports:
       - "${OLLAMA_PORT:-11434}:11434"
     environment:
@@ -29,7 +29,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
+          cpus: '4'
           memory: 12G
         reservations:
           memory: 6G
