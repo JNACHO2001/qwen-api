@@ -43,6 +43,9 @@ class ProcesoLegalRequest(BaseModel):
     """
     Modelo completo de un proceso legal del Consejo de Estado.
     """
+
+    juzgado_o_tribunal:str = Field(default="")
+    juzgado_administrativo:str= Field(default="")
     reg: str = Field(default="")
     radicacion: str = Field(default="")
     ponente: str = Field(default="")
@@ -63,7 +66,9 @@ class ProcesoLegalResponse(BaseModel):
     """
     Modelo de respuesta con proceso clasificado.
     """
-    reg: str
+
+    juzgado_o_tribunal:str
+    juzgado_administrativo:str
     radicacion: str
     ponente: str
     demandante: str

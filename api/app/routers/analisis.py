@@ -177,6 +177,8 @@ async def clasificar_proceso(
 
         # Devolver el objeto completo con clasificación
         return ProcesoLegalResponse(
+            juzgado_o_tribunal=request.juzgado_o_tribunal,
+            juzgado_administrativo=request.juzgado_administrativo,
             reg=request.reg,
             radicacion=request.radicacion,
             ponente=request.ponente,
