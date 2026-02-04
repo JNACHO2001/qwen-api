@@ -133,6 +133,11 @@ async def clasificar_proceso(
         # Usar texto_pdf_completo o contenido_demanda para clasificar
         texto_clasificar = request.texto_pdf_completo or request.contenido_demanda
 
+        # Limitar el texto al máximo configurado
+        if len(texto_clasificar) > settings.max_caracteres_texto:
+            logger.info(f"Texto truncado de {len(texto_clasificar)} a {settings.max_caracteres_texto} caracteres")
+            texto_clasificar = texto_clasificar[:settings.max_caracteres_texto]
+
         if not texto_clasificar:
             logger.warning("Solicitud rechazada: no se proporcionó texto para clasificar")
             raise HTTPException(
