@@ -58,6 +58,7 @@ class ProcesoLegalRequest(BaseModel):
     fecha_estado: str = Field(default="")
     pdf_descargado: bool = Field(default=False)
     ruta_pdf: str = Field(default="")
+    enlace: str = Field(default="")
     texto_pdf_completo: str = Field(default="")
     contenido_demanda: str = Field(default="")
 
@@ -80,6 +81,7 @@ class ProcesoLegalResponse(BaseModel):
     fecha_estado: str
     pdf_descargado: bool
     ruta_pdf: str
+    enlace: str
     texto_pdf_completo: str
     contenido_demanda: str
     es_relevante: bool

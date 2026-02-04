@@ -58,7 +58,6 @@ class Settings(BaseSettings):
     ollama_host: str = "ollama"  # Nombre del servicio Docker
     ollama_port: int = 11434  # Puerto estándar de Ollama
     model_name: str = "qwen2.5:3b"  # Modelo Qwen optimizado para velocidad
-    max_caracteres_texto: int = 1500  # Máximo de caracteres a analizar
     
     # -------------------------------------------------------------------------
     # Configuración de la aplicación

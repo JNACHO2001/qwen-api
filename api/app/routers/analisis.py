@@ -133,11 +133,6 @@ async def clasificar_proceso(
         # Usar texto_pdf_completo o contenido_demanda para clasificar
         texto_clasificar = request.texto_pdf_completo or request.contenido_demanda
 
-        # Limitar el texto al máximo configurado
-        if len(texto_clasificar) > settings.max_caracteres_texto:
-            logger.info(f"Texto truncado de {len(texto_clasificar)} a {settings.max_caracteres_texto} caracteres")
-            texto_clasificar = texto_clasificar[:settings.max_caracteres_texto]
-
         if not texto_clasificar:
             logger.warning("Solicitud rechazada: no se proporcionó texto para clasificar")
             raise HTTPException(
@@ -153,13 +148,13 @@ async def clasificar_proceso(
             model=settings.model_name,
             messages=[{"role": "user", "content": prompt}],
             options={
-                "temperature": 0.1,      #  Casi determinístico
-                "top_p": 0.3,            #  Un poco más de creatividad para generar la razón
-                "num_predict": 200,      #  Espacio suficiente para los 3 campos
-                "repeat_penalty": 1.1    #  Evita repeticiones
-        },
-
-             keep_alive="15m"
+                "temperature": 0.1,      # Casi determinístico
+                "top_p": 0.3,            # Un poco más de creatividad para generar la razón
+                "num_predict": 200,      # Espacio suficiente para los 3 campos
+                "repeat_penalty": 1.1,   # Evita repeticiones
+                "num_ctx": 8192          # Contexto extendido para textos largos
+            },
+            keep_alive="15m"
         )
 
         resultado = json.loads(response['message']['content'])
@@ -196,6 +191,7 @@ async def clasificar_proceso(
             fecha_estado=request.fecha_estado,
             pdf_descargado=request.pdf_descargado,
             ruta_pdf=request.ruta_pdf,
+            enlace=request.enlace.strip() if request.enlace else "",
             texto_pdf_completo=request.texto_pdf_completo,
             contenido_demanda=request.contenido_demanda,
             es_relevante=es_relevante,
