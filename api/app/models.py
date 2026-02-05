@@ -70,6 +70,7 @@ class ProcesoLegalResponse(BaseModel):
 
     juzgado_o_tribunal:str
     juzgado_administrativo:str
+    reg: str
     radicacion: str
     ponente: str
     demandante: str

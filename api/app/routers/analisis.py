@@ -15,6 +15,7 @@ Requiere autenticación mediante API Key.
 # IMPORTACIONES
 # -----------------------------------------------------------------------------
 import logging  # Para logging estructurado
+import re  # Para extraer JSON de respuestas
 from fastapi import APIRouter, Depends, HTTPException  # Herramientas de FastAPI
 import ollama  # Cliente para el servidor de modelos Ollama
 import json  # Para parsear respuestas JSON
@@ -157,7 +158,22 @@ async def clasificar_proceso(
             keep_alive="15m"
         )
 
-        resultado = json.loads(response['message']['content'])
+        # Log de la respuesta cruda del modelo
+        respuesta_cruda = response['message']['content']
+        logger.info(f"Respuesta del modelo: {respuesta_cruda[:500]}")
+
+        # Intentar extraer JSON de la respuesta
+        if not respuesta_cruda or not respuesta_cruda.strip():
+            raise HTTPException(status_code=500, detail="El modelo devolvió una respuesta vacía")
+
+        # Buscar JSON en la respuesta (por si el modelo agrega texto extra)
+        json_match = re.search(r'\{[^{}]*\}', respuesta_cruda)
+        if json_match:
+            respuesta_json = json_match.group()
+        else:
+            respuesta_json = respuesta_cruda.strip()
+
+        resultado = json.loads(respuesta_json)
 
         # Validar que el resultado contenga los campos requeridos
         if "es_relevante" not in resultado:
