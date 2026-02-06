@@ -12,31 +12,65 @@ Clasifica procesos judiciales del Consejo de Estado colombiano relacionados con 
 - Privacidad Total - Los datos no salen del servidor
 - Dockerizado - Despliegue fácil
 - Autenticación por API Key
+- CI automatizado con GitHub Actions
 
 ---
 
 ## Requisitos Previos
 
-Antes de comenzar, asegúrate de tener instalado:
-
 | Requisito | Versión Mínima | Verificar con |
 |-----------|----------------|---------------|
-| Docker Desktop | 4.0+ | `docker --version` |
+| Docker | 20.10+ | `docker --version` |
+| Docker Compose | 2.0+ | `docker compose version` |
 | Git | 2.0+ | `git --version` |
-| RAM | 8 GB mínimo | - |
-| Disco | 10 GB libres | - |
+| RAM | 8 GB mínimo | `free -h` |
+| Disco | 10 GB libres | `df -h` |
 
 ---
 
-## Guía de Instalación Paso a Paso
+## Guía de Instalación Paso a Paso (Linux)
 
-### Paso 1: Clonar el Repositorio desde GitHub
+### Paso 1: Instalar Docker
 
 ```bash
-# Abrir terminal (CMD o PowerShell en Windows)
+# Actualizar paquetes del sistema
+sudo apt update && sudo apt upgrade -y
 
+# Instalar dependencias necesarias
+sudo apt install -y ca-certificates curl gnupg
+
+# Agregar la clave GPG oficial de Docker
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# Agregar el repositorio de Docker
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Instalar Docker Engine y Docker Compose
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Agregar tu usuario al grupo docker (para no usar sudo cada vez)
+sudo usermod -aG docker $USER
+
+# IMPORTANTE: Cerrar sesión y volver a entrar para que el cambio de grupo tome efecto
+# O ejecutar temporalmente:
+newgrp docker
+
+# Verificar que Docker funciona
+docker --version
+docker compose version
+```
+
+### Paso 2: Clonar el Repositorio
+
+```bash
 # Navegar a la carpeta donde quieres guardar el proyecto
-cd C:\Users\TuUsuario\Documents
+cd ~/Documents
 
 # Clonar el repositorio
 git clone https://github.com/tu-usuario/qwen-api.git
@@ -45,17 +79,17 @@ git clone https://github.com/tu-usuario/qwen-api.git
 cd qwen-api
 ```
 
-### Paso 2: Configurar Variables de Entorno
+### Paso 3: Configurar Variables de Entorno
 
 ```bash
 # Copiar el archivo de ejemplo
-copy .env.example .env
+cp .env.example .env
 
-# En Linux/Mac usar:
-# cp .env.example .env
+# Editar el archivo con nano (o tu editor favorito)
+nano .env
 ```
 
-Editar el archivo `.env` con un editor de texto y configurar:
+Configurar los valores dentro del archivo `.env`:
 
 ```env
 # OBLIGATORIO - Cambiar por una clave segura
@@ -65,145 +99,164 @@ API_KEY=tu_clave_secreta_aqui
 API_PORT=8000
 
 # OPCIONAL - Modelo a usar
-MODEL_NAME=qwen2.5:1.5b
+MODEL_NAME=qwen2.5:3b
 ```
 
-### Paso 3: Configurar la Carpeta de Modelos
+Guardar y salir de nano: `Ctrl + O` → `Enter` → `Ctrl + X`
 
-Antes de iniciar, debes configurar dónde se guardarán los modelos de Ollama en tu equipo.
+### Paso 4: Configurar la Carpeta de Modelos
 
-**En Windows:**
 ```bash
-# Crear carpeta para modelos (si no existe)
-mkdir C:\Users\TuUsuario\.ollama
-```
-
-**En Linux/Mac:**
-```bash
+# Crear la carpeta donde se guardarán los modelos de Ollama
 mkdir -p ~/.ollama
+
+# Verificar que se creó
+ls -la ~/.ollama
 ```
 
-Luego, editar el archivo `docker-compose.yml` y cambiar la línea del volumen:
+Editar el archivo `docker-compose.yml` para apuntar al volumen correcto:
+
+```bash
+nano docker-compose.yml
+```
+
+Buscar la sección de volúmenes del servicio `ollama` y cambiar la ruta:
 
 ```yaml
 volumes:
-  # Cambiar esta ruta por tu carpeta de usuario
-  - C:\Users\TuUsuario\.ollama:/root/.ollama   # Windows
-  # - ~/.ollama:/root/.ollama                   # Linux/Mac
+  # Cambiar por tu ruta de usuario
+  - /home/tu-usuario/.ollama:/root/.ollama
 ```
 
-### Paso 4: Iniciar los Contenedores
+### Paso 5: Construir e Iniciar los Contenedores
 
 ```bash
-# Construir e iniciar los servicios
-docker-compose up -d --build
+# Construir las imágenes e iniciar los servicios en segundo plano
+docker compose up -d --build
 
 # Verificar que los contenedores estén corriendo
 docker ps
 ```
 
-Deberías ver dos contenedores:
-- `qwen-ollama` - Servidor de modelos
-- `qwen-api` - API REST
+Deberías ver dos contenedores activos:
 
-### Paso 5: Descargar los Modelos en Ollama
+```
+CONTAINER ID   IMAGE          STATUS                   NAMES
+abc123...      ollama/ollama  Up 2 minutes (healthy)   qwen-ollama
+def456...      qwen-api       Up 2 minutes             qwen-api
+```
 
-Una vez que los contenedores estén corriendo, debes descargar el modelo dentro del contenedor de Ollama:
+### Paso 6: Descargar el Modelo dentro del Contenedor
+
+Este es el paso más importante. El modelo de IA se descarga **dentro** del contenedor de Ollama.
 
 ```bash
-# Entrar al contenedor de Ollama
+# 1. Verificar que el contenedor de Ollama está corriendo
+docker ps | grep qwen-ollama
+
+# 2. Entrar al contenedor de Ollama
 docker exec -it qwen-ollama bash
 
-# Dentro del contenedor, descargar el modelo principal
-ollama pull qwen2.5:1.5b
+# 3. Dentro del contenedor: descargar el modelo principal
+ollama pull qwen2.5:3b
 
-# (Opcional) Descargar otros modelos
-ollama pull qwen2.5:3b      # Modelo más grande (mejor calidad)
-ollama pull qwen2.5:0.5b    # Modelo más pequeño (más rápido)
-
-# Ver los modelos descargados
+# 4. Verificar que el modelo se descargó correctamente
 ollama list
 
-# Salir del contenedor
+# 5. (Opcional) Probar el modelo directamente
+ollama run qwen2.5:3b "Hola, ¿funciona correctamente?"
+
+# 6. Salir del contenedor
 exit
 ```
 
 **Tamaño aproximado de los modelos:**
+
 | Modelo | Tamaño | RAM requerida |
 |--------|--------|---------------|
 | qwen2.5:0.5b | ~400 MB | 4 GB |
 | qwen2.5:1.5b | ~1.5 GB | 6 GB |
 | qwen2.5:3b | ~2.5 GB | 8 GB |
 
-### Paso 6: Verificar que los Modelos están en tu Equipo
+### Paso 7: Persistir el Modelo en el Host
 
-Los modelos se guardan automáticamente en la carpeta que configuraste en el Paso 3.
+Los modelos se persisten automáticamente gracias al volumen configurado en el Paso 4. Esto significa que si detienes o eliminas el contenedor, los modelos **no se pierden**.
 
-**Verificar en Windows:**
 ```bash
-# Ver contenido de la carpeta de modelos
-dir C:\Users\TuUsuario\.ollama\models
+# Verificar que los modelos están en tu máquina host
+ls -la ~/.ollama/models/
+
+# Deberías ver esta estructura:
+# .ollama/
+# ├── models/
+# │   ├── blobs/          # Archivos binarios de los modelos
+# │   └── manifests/      # Metadatos de los modelos
+
+# Ver el tamaño total de los modelos descargados
+du -sh ~/.ollama/models/
 ```
 
-**Verificar en Linux/Mac:**
+Para comprobar que la persistencia funciona:
+
 ```bash
-ls -la ~/.ollama/models
+# Detener y eliminar los contenedores
+docker compose down
+
+# Volver a iniciar (los modelos siguen ahí)
+docker compose up -d
+
+# Verificar que el modelo sigue disponible
+docker exec qwen-ollama ollama list
 ```
 
-La estructura de carpetas será:
-```
-.ollama/
-├── models/
-│   ├── blobs/          # Archivos binarios de los modelos
-│   └── manifests/      # Metadatos de los modelos
-└── ...
+### Paso 8: Copiar Modelos a Otro Servidor
+
+Si necesitas mover los modelos a otro equipo Linux sin volver a descargarlos:
+
+**En el servidor origen (exportar):**
+
+```bash
+# Crear un backup comprimido de los modelos
+tar -czf ollama-models-backup.tar.gz -C ~/.ollama .
+
+# Ver el tamaño del backup
+ls -lh ollama-models-backup.tar.gz
+
+# Copiar al servidor destino usando scp
+scp ollama-models-backup.tar.gz usuario@servidor-destino:/tmp/
 ```
 
-### Paso 7: Verificar la Instalación Completa
+**En el servidor destino (importar):**
+
+```bash
+# Crear la carpeta de destino
+mkdir -p ~/.ollama
+
+# Extraer los modelos
+tar -xzf /tmp/ollama-models-backup.tar.gz -C ~/.ollama
+
+# Verificar que se extrajeron correctamente
+ls -la ~/.ollama/models/
+
+# Iniciar los contenedores (los modelos ya están disponibles)
+docker compose up -d
+
+# Verificar que Ollama detecta los modelos
+docker exec qwen-ollama ollama list
+```
+
+### Paso 9: Verificar la Instalación Completa
 
 ```bash
 # Verificar que la API responde
 curl http://localhost:8000/health
 
-# O abrir en el navegador:
-# http://localhost:8000/health
-# http://localhost:8000/docs  (Documentación Swagger)
+# Respuesta esperada:
+# {"status": "healthy", "modelo": "qwen2.5:3b", ...}
+
+# Ver la documentación Swagger en el navegador:
+# http://localhost:8000/docs
 ```
-
-Respuesta esperada:
-```json
-{"status": "healthy", "model": "qwen2.5:1.5b"}
-```
-
----
-
-## Copiar Modelos a Otro Equipo
-
-Si necesitas mover los modelos a otro equipo sin volver a descargarlos:
-
-### Exportar (desde el equipo origen)
-
-```bash
-# Copiar la carpeta completa de modelos
-# Windows:
-xcopy /E /I C:\Users\TuUsuario\.ollama C:\backup\ollama-models
-
-# Linux/Mac:
-cp -r ~/.ollama ~/backup/ollama-models
-```
-
-### Importar (en el equipo destino)
-
-```bash
-# Copiar los modelos a la ubicación correcta
-# Windows:
-xcopy /E /I C:\backup\ollama-models C:\Users\TuUsuario\.ollama
-
-# Linux/Mac:
-cp -r ~/backup/ollama-models ~/.ollama
-```
-
-Luego, en el equipo destino, solo necesitas iniciar los contenedores y los modelos estarán disponibles.
 
 ---
 
@@ -260,11 +313,50 @@ API_KEY=tu_clave_secreta
 
 # Opcional
 API_PORT=8000
-MODEL_NAME=qwen2.5:1.5b
+MODEL_NAME=qwen2.5:3b
 OLLAMA_KEEP_ALIVE=60m
 OLLAMA_NUM_PARALLEL=1
 OLLAMA_NUM_THREADS=8
 ```
+
+---
+
+## CI - Integración Continua
+
+El proyecto usa **GitHub Actions** para ejecutar los tests automáticamente cada vez que se hace push o se abre un Pull Request en la rama `develop-DOLMEN`.
+
+### ¿Cómo funciona?
+
+```
+Push a develop-DOLMEN
+        │
+        ▼
+GitHub crea un servidor Ubuntu temporal
+        │
+        ▼
+Clona el repositorio
+        │
+        ▼
+Instala Python 3.12 y dependencias
+        │
+        ▼
+Ejecuta pytest (15 tests)
+        │
+        ▼
+   ✅ PASS  o  ❌ FAIL
+```
+
+### Archivo de configuración
+
+El workflow está en [.github/workflows/ci.yml](.github/workflows/ci.yml) y se ejecuta automáticamente. No necesitas hacer nada extra.
+
+### Ver los resultados
+
+1. Ir al repositorio en GitHub
+2. Click en la pestaña **Actions**
+3. Verás el historial de ejecuciones con su estado (verde = pasó, rojo = falló)
+
+---
 
 ## Comandos Útiles
 
@@ -275,22 +367,22 @@ OLLAMA_NUM_THREADS=8
 docker ps
 
 # Ver logs en tiempo real
-docker-compose logs -f
+docker compose logs -f
 
 # Ver logs solo de la API
-docker-compose logs -f api
+docker compose logs -f api
 
 # Ver logs solo de Ollama
-docker-compose logs -f ollama
+docker compose logs -f ollama
 
 # Reiniciar todos los servicios
-docker-compose restart
+docker compose restart
 
 # Detener todos los servicios
-docker-compose down
+docker compose down
 
 # Reconstruir e iniciar
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### Gestión de Modelos en Ollama
@@ -309,39 +401,44 @@ docker exec qwen-ollama ollama pull qwen2.5:3b
 docker exec qwen-ollama ollama rm qwen2.5:0.5b
 
 # Probar un modelo directamente
-docker exec -it qwen-ollama ollama run qwen2.5:1.5b "Hola, ¿cómo estás?"
+docker exec -it qwen-ollama ollama run qwen2.5:3b "Hola, ¿cómo estás?"
 ```
 
 ### Solución de Problemas
 
 ```bash
-# Ver uso de recursos
+# Ver uso de recursos (CPU, RAM por contenedor)
 docker stats
 
 # Reiniciar solo Ollama
-docker-compose restart ollama
+docker compose restart ollama
 
 # Ver logs de errores
-docker-compose logs --tail=50 api
+docker compose logs --tail=50 api
 
-# Verificar conectividad interna
+# Verificar conectividad interna entre contenedores
 docker exec qwen-api curl http://ollama:11434/api/tags
 ```
 
-## Estructura
+---
+
+## Estructura del Proyecto
 
 ```
 qwen-api/
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # Pipeline de CI (GitHub Actions)
 ├── docker-compose.yml
-├── .env                    # Variables de entorno (no subir a git)
-├── .env.example            # Ejemplo de configuración
-├── .gitignore              # Archivos ignorados por git
-├── requirements.txt        # Dependencias Python
-├── tests/                  # Tests automatizados
-│   ├── conftest.py         # Configuración de pytest
-│   ├── test_config.py      # Tests de configuración
-│   ├── test_models.py      # Tests de modelos Pydantic
-│   └── test_api.py         # Tests de endpoints
+├── .env                        # Variables de entorno (no subir a git)
+├── .env.example                # Ejemplo de configuración
+├── .gitignore                  # Archivos ignorados por git
+├── requirements.txt            # Dependencias Python
+├── tests/                      # Tests automatizados
+│   ├── conftest.py             # Configuración de pytest
+│   ├── test_config.py          # Tests de configuración
+│   ├── test_models.py          # Tests de modelos Pydantic
+│   └── test_api.py             # Tests de endpoints
 └── api/
     ├── Dockerfile
     ├── requirements.txt
@@ -371,8 +468,6 @@ El proyecto incluye tests automatizados para verificar el correcto funcionamient
 
 ### Ejecutar Tests (dentro de Docker)
 
-La forma más fácil de ejecutar los tests es dentro del contenedor donde ya están todas las dependencias:
-
 ```bash
 # Copiar los tests al contenedor (solo la primera vez)
 docker cp tests qwen-api:/app/tests
@@ -398,18 +493,6 @@ docker exec qwen-api python -m pytest tests/test_config.py -v
 
 # Ejecutar tests sin traceback largo
 docker exec qwen-api python -m pytest tests/ -v --tb=short
-```
-
-### Ejecutar Tests Manualmente
-
-También puedes entrar al contenedor y ejecutar los tests:
-
-```bash
-# Entrar al contenedor
-docker exec -it qwen-api bash
-
-# Dentro del contenedor
-python -m pytest tests/ -v
 ```
 
 ### Resultado Esperado
@@ -441,18 +524,18 @@ tests/test_models.py::test_pydantic_validacion_tipos PASSED
 ### El contenedor de Ollama no inicia
 
 ```bash
-# Verificar que Docker tiene suficiente memoria asignada
-# En Docker Desktop: Settings > Resources > Memory (mínimo 8 GB)
+# Verificar memoria disponible (mínimo 8 GB)
+free -h
 
 # Ver logs de error
-docker-compose logs ollama
+docker compose logs ollama
 ```
 
 ### Error "model not found"
 
 ```bash
 # El modelo no está descargado. Descargarlo con:
-docker exec qwen-ollama ollama pull qwen2.5:1.5b
+docker exec qwen-ollama ollama pull qwen2.5:3b
 ```
 
 ### La API no responde
@@ -465,28 +548,30 @@ docker ps
 docker exec qwen-ollama ollama list
 
 # Reiniciar los servicios
-docker-compose restart
+docker compose restart
 ```
 
 ### Los modelos no persisten después de reiniciar
 
 Verificar que el volumen esté correctamente configurado en `docker-compose.yml`:
+
 ```yaml
 volumes:
-  - C:\Users\TuUsuario\.ollama:/root/.ollama
+  - /home/tu-usuario/.ollama:/root/.ollama
 ```
 
 ---
 
 ## Tecnologías
 
-- Python 3.11
+- Python 3.12
 - FastAPI
 - Pydantic
 - Ollama
-- Qwen 2.5 (1.5B)
-- Docker
+- Qwen 2.5 (3B)
+- Docker / Docker Compose
 - Pytest (testing)
+- GitHub Actions (CI)
 
 ---
 
