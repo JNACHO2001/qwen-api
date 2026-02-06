@@ -126,6 +126,8 @@ def test_proceso_legal_response():
 
     # Creamos una respuesta con clasificación
     response = ProcesoLegalResponse(
+        juzgado_o_tribunal="Consejo de Estado",
+        juzgado_administrativo="Sección Tercera",
         reg="12345",
         radicacion="2024-00001",
         ponente="",
