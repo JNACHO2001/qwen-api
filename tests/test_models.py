@@ -86,6 +86,8 @@ def test_proceso_legal_request_completo():
 
     # Creamos un request con todos los campos
     request = ProcesoLegalRequest(
+        juzgado_o_tribunal="Consejo de Estado",
+        juzgado_administrativo="Sección Tercera",
         reg="12345",
         radicacion="2024-00001",
         ponente="Juan Pérez",
