@@ -1,0 +1,118 @@
+# =============================================================================
+# CI - INTEGRACIÓN CONTINUA con GitHub Actions
+# =============================================================================
+# Este archivo define el pipeline de CI para el proyecto Qwen API.
+#
+# ¿Qué es CI (Integración Continua)?
+# - Es una práctica donde cada cambio en el código se verifica automáticamente
+# - Ejecuta tests, linting, etc. cada vez que haces push o abres un PR
+# - Si algo falla, GitHub te avisa antes de que el código llegue a producción
+#
+# ¿Dónde debe estar este archivo?
+# - Siempre en: .github/workflows/nombre.yml
+# - GitHub lo detecta automáticamente
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# NOMBRE DEL WORKFLOW
+# -----------------------------------------------------------------------------
+# Este nombre aparece en la pestaña "Actions" de tu repositorio en GitHub
+name: CI - Tests
+
+# -----------------------------------------------------------------------------
+# TRIGGERS (¿Cuándo se ejecuta?)
+# -----------------------------------------------------------------------------
+# 'on' define los eventos que disparan el workflow
+on:
+  # Se ejecuta cuando haces push a estas ramas
+  push:
+    branches: [ develop-DOLMEN ]
+
+  # Se ejecuta cuando abres o actualizas un Pull Request hacia estas ramas
+  pull_request:
+    branches: [ develop-DOLMEN ]
+
+# -----------------------------------------------------------------------------
+# JOBS (Trabajos a ejecutar)
+# -----------------------------------------------------------------------------
+# Un workflow puede tener múltiples jobs que corren en paralelo
+# Nosotros tenemos un solo job: "test"
+jobs:
+
+  # ===========================================================================
+  # JOB: test
+  # ===========================================================================
+  # Este job instala dependencias y ejecuta los tests
+  test:
+    # -------------------------------------------------------------------------
+    # RUNNER: ¿En qué máquina corre?
+    # -------------------------------------------------------------------------
+    # 'runs-on' define el sistema operativo del servidor de GitHub
+    # ubuntu-latest = última versión de Ubuntu (gratis para repos públicos)
+    # También existen: windows-latest, macos-latest
+    runs-on: ubuntu-24.04
+
+    # -------------------------------------------------------------------------
+    # STEPS: Pasos a ejecutar (en orden secuencial)
+    # -------------------------------------------------------------------------
+    steps:
+
+      # -----------------------------------------------------------------------
+      # PASO 1: Descargar el código del repositorio
+      # -----------------------------------------------------------------------
+      # 'uses' ejecuta una acción predefinida de GitHub
+      # actions/checkout@v4 = clona tu repo en el servidor
+      # Sin esto, el servidor no tiene tu código
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # PASO 2: Instalar Python
+      # -----------------------------------------------------------------------
+      # actions/setup-python@v5 instala la versión de Python que necesitas
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # -----------------------------------------------------------------------
+      # PASO 3: Cache de dependencias (optimización)
+      # -----------------------------------------------------------------------
+      # Guarda las dependencias en caché para que no se descarguen cada vez
+      # Esto hace que el CI sea más rápido en ejecuciones posteriores
+      - name: Cache de dependencias pip
+        uses: actions/cache@v4
+        with:
+          # Carpeta donde pip guarda los paquetes descargados
+          path: ~/.cache/pip
+          # La clave del caché se basa en el contenido de requirements.txt
+          # Si cambias las dependencias, se regenera el caché
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          # Si no encuentra caché exacto, usa uno parcial
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # -----------------------------------------------------------------------
+      # PASO 4: Instalar dependencias
+      # -----------------------------------------------------------------------
+      # 'run' ejecuta comandos de terminal (como en tu PC)
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # -----------------------------------------------------------------------
+      # PASO 5: Ejecutar los tests
+      # -----------------------------------------------------------------------
+      # Ejecuta pytest con los tests del proyecto
+      # 'env' define variables de entorno necesarias para los tests
+      - name: Ejecutar tests con pytest
+        env:
+          # La API necesita una API_KEY para funcionar
+          # Usamos un valor de prueba (no es la clave real de producción)
+          API_KEY: test-api-key-ci
+          MODEL_NAME: qwen2.5:3b
+          OLLAMA_HOST: ollama
+          OLLAMA_PORT: "11434"
+        run: |
+          python -m pytest tests/ -v --tb=short
