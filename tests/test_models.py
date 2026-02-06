@@ -140,6 +140,7 @@ def test_proceso_legal_response():
         fecha_estado="",
         pdf_descargado=False,
         ruta_pdf="",
+        enlace="https://example.com/proceso/12345",
         texto_pdf_completo="Proceso de alumbrado público",
         contenido_demanda="",
         # Campos de clasificación (lo que agrega la IA)
